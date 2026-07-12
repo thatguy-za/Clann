@@ -15,11 +15,26 @@
 		<nav class="nav">
 			<a class="nav-link" class:active={page.url.pathname === '/'} href="/">Tree</a>
 			{#if isAdmin}
-				<a
-					class="nav-link"
-					class:active={page.url.pathname.startsWith('/admin')}
-					href="/admin">Manage</a
-				>
+				<div class="menu">
+					<button
+						type="button"
+						class="nav-link kebab"
+						class:active={page.url.pathname.startsWith('/admin')}
+						aria-haspopup="menu"
+						aria-label="Manage"
+						title="Manage"
+					>
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+							<circle cx="12" cy="5" r="2" />
+							<circle cx="12" cy="12" r="2" />
+							<circle cx="12" cy="19" r="2" />
+						</svg>
+					</button>
+					<div class="dropdown" role="menu">
+						<a role="menuitem" href="/admin">Add new person</a>
+						<a role="menuitem" href="/admin/users">Manage users</a>
+					</div>
+				</div>
 			{/if}
 		</nav>
 
@@ -91,6 +106,73 @@
 	.nav-link.active {
 		background: var(--primary-soft);
 		color: var(--primary);
+	}
+
+	/* Kebab (three-dots) menu */
+	.menu {
+		position: relative;
+	}
+	.kebab {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.35rem 0.5rem;
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: var(--text-muted);
+	}
+	.kebab:hover {
+		background: var(--surface-2);
+		color: var(--text);
+	}
+	.dropdown {
+		position: absolute;
+		top: calc(100% + 0.35rem);
+		left: 0;
+		min-width: 170px;
+		display: flex;
+		flex-direction: column;
+		padding: 0.3rem;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-sm);
+		box-shadow: var(--shadow);
+		opacity: 0;
+		visibility: hidden;
+		transform: translateY(-4px);
+		transition:
+			opacity 0.12s ease,
+			transform 0.12s ease,
+			visibility 0.12s;
+		z-index: 20;
+	}
+	/* Bridge the gap so the dropdown stays open while the pointer travels to it */
+	.dropdown::before {
+		content: '';
+		position: absolute;
+		bottom: 100%;
+		left: 0;
+		right: 0;
+		height: 0.35rem;
+	}
+	.menu:hover .dropdown,
+	.menu:focus-within .dropdown {
+		opacity: 1;
+		visibility: visible;
+		transform: translateY(0);
+	}
+	.dropdown a {
+		padding: 0.45rem 0.6rem;
+		border-radius: var(--radius-sm);
+		color: var(--text);
+		font-size: 0.9rem;
+		font-weight: 500;
+		white-space: nowrap;
+	}
+	.dropdown a:hover {
+		background: var(--surface-2);
+		text-decoration: none;
 	}
 	.account {
 		display: flex;
