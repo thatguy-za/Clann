@@ -52,13 +52,56 @@ const EVENT_LABELS: Record<string, string> = {
 	DIV: 'Divorce', EVEN: 'Event', TITL: 'Title'
 };
 
+function yearIn(s: string): string | null {
+	const m = s.match(/\d{4}/);
+	return m ? m[0] : null;
+}
+
+// Convert a GEDCOM date to a clean stored value:
+//   - "11 JUL 1992"            -> "1992/07/11"  (tree renders "11 July 1992")
+//   - "ABT/EST/CAL/CIRCA 1825" -> "c. 1825"
+//   - "BET 1883 AND 1884"      -> "1883–1884"
+//   - "BEF/AFT 1900"           -> "before 1900" / "after 1900"
+//   - bare year / anything else -> kept verbatim
 function convertDate(value: string): string | null {
 	const t = value.trim();
 	if (!t) return null;
-	const m = t.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
+	const up = t.toUpperCase();
+
+	// Range: BET x AND y
+	let m = up.match(/^BET(?:WEEN)?\s+(.+?)\s+AND\s+(.+)$/);
+	if (m) {
+		const y1 = yearIn(m[1]);
+		const y2 = yearIn(m[2]);
+		if (y1 && y2) return y1 === y2 ? `c. ${y1}` : `${y1}–${y2}`;
+	}
+	// Approximate / estimated / calculated
+	m = up.match(/^(?:ABT|ABOUT|EST|ESTIMATED|CAL|CIRCA)\.?\s+(.+)$/);
+	if (m) {
+		const y = yearIn(m[1]);
+		if (y) return `c. ${y}`;
+	}
+	// Before / after
+	m = up.match(/^(?:BEF|BEFORE)\s+(.+)$/);
+	if (m) {
+		const y = yearIn(m[1]);
+		if (y) return `before ${y}`;
+	}
+	m = up.match(/^(?:AFT|AFTER)\s+(.+)$/);
+	if (m) {
+		const y = yearIn(m[1]);
+		if (y) return `after ${y}`;
+	}
+	// Exact "DD MON YYYY"
+	m = t.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
 	if (m) {
 		const mon = MONTHS[m[2].toUpperCase()];
 		if (mon) return `${m[3]}/${mon}/${m[1].padStart(2, '0')}`;
+	}
+	// Freeform containing an approximate marker (e.g. "23 June about 1880")
+	if (/\b(ABOUT|ABT|CIRCA|EST)\b/.test(up)) {
+		const y = yearIn(t);
+		if (y) return `c. ${y}`;
 	}
 	return t;
 }
@@ -66,6 +109,17 @@ function convertDate(value: string): string | null {
 function pointer(value: string): string | null {
 	const m = value.trim().match(/^@([^@]+)@$/);
 	return m ? `@${m[1]}@` : null;
+}
+
+// A leading parenthetical on a name is a role/title/note crammed into the
+// NAME field (e.g. "(Research Officer) Oliver /West/", "(Twin) Kathleen
+// /Lyons/"). Pull it off the front so the name is clean; the caller stores it
+// separately. Mid-name parentheticals (nicknames like "Catherine (Kate)") are
+// left alone.
+function extractLeadingPrefix(given: string): { prefix: string | null; given: string } {
+	const m = given.match(/^\(([^)]+)\)\s*(.*)$/);
+	if (m && m[2].trim()) return { prefix: m[1].trim(), given: m[2].trim() };
+	return { prefix: null, given };
 }
 
 function parseName(value: string): { given: string; surname: string | null } {
@@ -76,6 +130,24 @@ function parseName(value: string): { given: string; surname: string | null } {
 		return { given, surname: surname || null };
 	}
 	return { given: value.trim(), surname: null };
+}
+
+// Some exporters store rich-text notes as HTML. Reduce it to plain text so
+// the bio doesn't show literal "<p style=...>" markup.
+function htmlToText(s: string): string {
+	return s
+		.replace(/<\s*br\s*\/?>/gi, '\n')
+		.replace(/<\/\s*(p|div|li)\s*>/gi, '\n')
+		.replace(/<[^>]+>/g, '')
+		.replace(/&nbsp;/gi, ' ')
+		.replace(/&amp;/gi, '&')
+		.replace(/&lt;/gi, '<')
+		.replace(/&gt;/gi, '>')
+		.replace(/&quot;/gi, '"')
+		.replace(/&#0?39;|&apos;/gi, "'")
+		.replace(/[ \t]+\n/g, '\n')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
 }
 
 function parseDataUri(value: string): GedcomMedia | null {
@@ -145,8 +217,7 @@ export function parseGedcom(text: string): GedcomImport {
 
 	function resolveNote(n: Node): string {
 		const ptr = pointer(n.value);
-		if (ptr) return noteRecords.get(ptr) ?? '';
-		return nodeText(n);
+		return htmlToText(ptr ? (noteRecords.get(ptr) ?? '') : nodeText(n));
 	}
 
 	function mediaFromObjeResolved(n: Node): GedcomMedia | null {
@@ -254,5 +325,22 @@ function parseIndividual(
 	}
 
 	if (notes.length) person.bio = notes.join('\n\n');
+
+	// Separate a leading "(role/title)" prefix from the name and store it apart.
+	// Job/title prefixes go to the occupation field; birth descriptors like
+	// "Twin" (not an occupation) and anything that would overwrite an existing
+	// occupation go to notes instead.
+	const { prefix, given } = extractLeadingPrefix(person.givenName);
+	if (prefix) {
+		person.givenName = given;
+		const isDescriptor = /^twins?$/i.test(prefix);
+		const duplicatesOccupation = person.occupation?.toLowerCase() === prefix.toLowerCase();
+		if (!isDescriptor && !person.occupation) {
+			person.occupation = prefix;
+		} else if (!duplicatesOccupation) {
+			person.bio = person.bio ? `${prefix}\n\n${person.bio}` : prefix;
+		}
+	}
+
 	return person;
 }
