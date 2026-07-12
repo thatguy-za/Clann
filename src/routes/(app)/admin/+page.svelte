@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { APP_VERSION } from '$lib/version';
 	let { data, form } = $props();
 
 	function fullName(p: { givenName: string; familyName: string | null }) {
@@ -11,7 +12,10 @@
 
 <div class="wrap">
 	<div class="head">
-		<h1>Manage people</h1>
+		<div class="title">
+			<h1>Manage people</h1>
+			<span class="version" title="App version">Version {APP_VERSION}</span>
+		</div>
 		<a class="btn-secondary btn" href="/admin/users">User accounts</a>
 	</div>
 
@@ -100,6 +104,21 @@
 	}
 	.head h1 {
 		margin: 0;
+	}
+	.title {
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
+	}
+	.version {
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: var(--text-muted, #6b7280);
+		background: var(--surface-2, rgba(127, 127, 127, 0.12));
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 0.1rem 0.5rem;
+		white-space: nowrap;
 	}
 	.grid {
 		display: grid;
