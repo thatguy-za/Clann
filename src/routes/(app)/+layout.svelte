@@ -33,6 +33,7 @@
 					<div class="dropdown" role="menu">
 						<a role="menuitem" href="/admin">Add new person</a>
 						<a role="menuitem" href="/admin/users">Manage users</a>
+						<a role="menuitem" href="/admin/import">Import GEDCOM</a>
 					</div>
 				</div>
 			{/if}

@@ -10,6 +10,7 @@ import {
 	type Relationship
 } from './schema';
 import { deleteUpload } from './uploads';
+import type { GedcomImport } from './gedcom';
 
 export type PersonInput = {
 	givenName: string;
@@ -171,6 +172,82 @@ export function addSpouse(aId: string, bId: string, kind: Relationship['kind'] =
 
 export function removeRelationship(relId: string) {
 	db.delete(relationships).where(eq(relationships.id, relId)).run();
+}
+
+// --- Bulk replace (GEDCOM import) --------------------------------------
+
+export type ReplaceResult = { people: number; relationships: number };
+
+/**
+ * Overwrite the ENTIRE tree with imported data: every person, relationship,
+ * life event and photo is deleted first, then the import is inserted. The DB
+ * work runs in a single transaction so a failure leaves the old data intact.
+ * Photo files are removed from disk up front (that part is not transactional).
+ */
+export async function replaceTree(data: GedcomImport): Promise<ReplaceResult> {
+	// Remove photo files first; the DB rows go with the people below.
+	const owned = db.select().from(photos).all();
+	await Promise.all(owned.map((p) => deleteUpload(p.filename)));
+
+	const now = new Date();
+	return db.transaction((tx) => {
+		// Explicit deletes in FK order (cascade would cover it, but be explicit).
+		tx.delete(photos).run();
+		tx.delete(lifeEvents).run();
+		tx.delete(relationships).run();
+		tx.delete(people).run();
+
+		const idByXref = new Map<string, string>();
+		for (const gp of data.people) {
+			const id = randomUUID();
+			tx.insert(people)
+				.values({
+					id,
+					givenName: gp.givenName.trim() || 'Unknown',
+					familyName: gp.familyName?.trim() || null,
+					sex: gp.sex,
+					birthDate: gp.birthDate,
+					deathDate: gp.deathDate,
+					createdAt: now,
+					updatedAt: now
+				})
+				.run();
+			idByXref.set(gp.xref, id);
+		}
+
+		let relCount = 0;
+		const seen = new Set<string>();
+		const insertRel = (
+			type: 'parent-child' | 'spouse',
+			fromId: string,
+			toId: string,
+			kind: Relationship['kind']
+		) => {
+			// De-dupe (a spouse pair can appear from both directions).
+			const key = type === 'spouse' ? [type, ...[fromId, toId].sort()].join(':') : `${type}:${fromId}:${toId}`;
+			if (seen.has(key)) return;
+			seen.add(key);
+			tx.insert(relationships).values({ id: randomUUID(), type, fromId, toId, kind }).run();
+			relCount++;
+		};
+
+		for (const [parentXref, childXref] of data.parentChild) {
+			const parentId = idByXref.get(parentXref);
+			const childId = idByXref.get(childXref);
+			if (parentId && childId && parentId !== childId) {
+				insertRel('parent-child', parentId, childId, 'blood');
+			}
+		}
+		for (const [aXref, bXref] of data.spouses) {
+			const aId = idByXref.get(aXref);
+			const bId = idByXref.get(bXref);
+			if (aId && bId && aId !== bId) {
+				insertRel('spouse', aId, bId, 'married');
+			}
+		}
+
+		return { people: idByXref.size, relationships: relCount };
+	});
 }
 
 // Life events ------------------------------------------------------------
