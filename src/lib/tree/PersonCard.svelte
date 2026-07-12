@@ -70,8 +70,10 @@
 		position: absolute;
 		top: 4px;
 		right: 4px;
-		width: 20px;
-		height: 20px;
+		box-sizing: border-box;
+		width: 22px;
+		height: 22px;
+		padding: 0;
 		border-radius: 50%;
 		border: 1px solid var(--border);
 		background: var(--surface);
