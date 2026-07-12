@@ -1,9 +1,16 @@
 <script lang="ts">
 	import calcTree from 'relatives-tree';
-	import type { TreeData } from '$lib/server/buildGraph';
+	import type { TreeData, PersonSummary } from '$lib/server/buildGraph';
 	import PersonCard from './PersonCard.svelte';
+	import AddRelativeModal from './AddRelativeModal.svelte';
 
-	let { tree }: { tree: TreeData } = $props();
+	let { tree, isAdmin = false }: { tree: TreeData; isAdmin?: boolean } = $props();
+
+	// Which person we're adding a relative to (null = modal closed).
+	let addAnchor = $state<PersonSummary | null>(null);
+	const anchorHasParents = $derived(
+		addAnchor ? (tree.nodes.find((n) => n.id === addAnchor!.id)?.parents.length ?? 0) > 0 : false
+	);
 
 	const NODE_W = 150;
 	const NODE_H = 140;
@@ -38,8 +45,10 @@
 	let startY = 0;
 
 	function onPointerDown(e: PointerEvent) {
-		// Only pan when the drag starts on the background, not on a card.
-		if ((e.target as HTMLElement).closest('.node')) return;
+		// Only pan when the drag starts on the background, not on a card or its
+		// "+" add button.
+		const target = e.target as HTMLElement;
+		if (target.closest('.node') || target.closest('.add-btn')) return;
 		dragging = true;
 		startX = e.clientX - panX;
 		startY = e.clientY - panY;
@@ -144,6 +153,8 @@
 								width={NODE_W - GAP}
 								height={NODE_H - GAP}
 								root={n.id === effectiveRoot}
+								canAdd={isAdmin}
+								onAdd={(p) => (addAnchor = p)}
 							/>
 						</div>
 					{/if}
@@ -153,6 +164,14 @@
 			<p class="muted" style="padding:2rem;">Unable to lay out the tree.</p>
 		{/if}
 	</div>
+{/if}
+
+{#if addAnchor}
+	<AddRelativeModal
+		anchor={addAnchor}
+		hasParents={anchorHasParents}
+		onClose={() => (addAnchor = null)}
+	/>
 {/if}
 
 <style>

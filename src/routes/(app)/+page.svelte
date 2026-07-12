@@ -5,4 +5,4 @@
 
 <svelte:head><title>Clann</title></svelte:head>
 
-<FamilyTree tree={data.tree} />
+<FamilyTree tree={data.tree} isAdmin={data.isAdmin} />

@@ -6,8 +6,17 @@
 		person,
 		width,
 		height,
-		root = false
-	}: { person: PersonSummary; width: number; height: number; root?: boolean } = $props();
+		root = false,
+		canAdd = false,
+		onAdd
+	}: {
+		person: PersonSummary;
+		width: number;
+		height: number;
+		root?: boolean;
+		canAdd?: boolean;
+		onAdd?: (person: PersonSummary) => void;
+	} = $props();
 
 	function fullName(p: PersonSummary) {
 		return [p.givenName, p.familyName].filter(Boolean).join(' ');
@@ -22,26 +31,73 @@
 	});
 </script>
 
-<a
-	class="node"
-	class:female={person.sex === 'female'}
-	class:root
-	href={`/person/${person.id}`}
-	style="width:{width}px;height:{height}px;"
-	title={fullName(person)}
->
-	<div class="avatar">
-		{#if person.primaryPhotoId}
-			<img src={`/api/photos/${person.primaryPhotoId}`} alt="" />
-		{:else}
-			<span>{person.givenName[0] ?? '?'}</span>
-		{/if}
-	</div>
-	<div class="name">{fullName(person)}</div>
-	{#if years}<div class="years">{years}</div>{/if}
-</a>
+<div class="node-shell">
+	<a
+		class="node"
+		class:female={person.sex === 'female'}
+		class:root
+		href={`/person/${person.id}`}
+		style="width:{width}px;height:{height}px;"
+		title={fullName(person)}
+	>
+		<div class="avatar">
+			{#if person.primaryPhotoId}
+				<img src={`/api/photos/${person.primaryPhotoId}`} alt="" />
+			{:else}
+				<span>{person.givenName[0] ?? '?'}</span>
+			{/if}
+		</div>
+		<div class="name">{fullName(person)}</div>
+		{#if years}<div class="years">{years}</div>{/if}
+	</a>
+	{#if canAdd}
+		<button
+			class="add-btn"
+			type="button"
+			aria-label={`Add a relative of ${fullName(person)}`}
+			title="Add a relative"
+			onclick={() => onAdd?.(person)}
+		>+</button>
+	{/if}
+</div>
 
 <style>
+	.node-shell {
+		position: relative;
+		display: inline-block;
+	}
+	.add-btn {
+		position: absolute;
+		top: 4px;
+		right: 4px;
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		border: 1px solid var(--border);
+		background: var(--surface);
+		color: var(--primary);
+		font-size: 15px;
+		line-height: 1;
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+		box-shadow: var(--shadow-sm);
+		opacity: 0.5;
+		transition:
+			opacity 0.12s ease,
+			background 0.12s ease,
+			color 0.12s ease;
+		z-index: 3;
+	}
+	.node-shell:hover .add-btn,
+	.add-btn:focus-visible {
+		opacity: 1;
+	}
+	.add-btn:hover {
+		background: var(--primary);
+		color: #fff;
+		border-color: var(--primary);
+	}
 	.node {
 		box-sizing: border-box;
 		display: flex;
