@@ -5,7 +5,6 @@ import {
 	createHash
 } from 'node:crypto';
 import { promisify } from 'node:util';
-import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import type { Cookies } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -91,17 +90,34 @@ export async function invalidateSession(sessionId: string) {
 
 // --- Cookie helpers -----------------------------------------------------
 
-// Only mark the cookie Secure when actually served over HTTPS, so self-hosted
-// HTTP deployments (LAN, Raspberry Pi) still work. Derived from ORIGIN.
-const origin = env.ORIGIN ?? '';
-const secureCookies = origin ? origin.startsWith('https://') : !dev;
+// Whether the ORIGIN env (if set) forces HTTPS. Kept as a manual override.
+const originIsHttps = (env.ORIGIN ?? '').startsWith('https://');
 
-export function setSessionCookie(cookies: Cookies, token: string, expiresAt: Date) {
+// Only mark the cookie Secure when the request actually arrived over HTTPS,
+// so self-hosted deployments work on any host/port/proxy without config:
+//   - Direct HTTP (LAN, Raspberry Pi, custom port): no x-forwarded-proto -> not
+//     Secure, so the browser keeps the cookie.
+//   - Behind an HTTPS reverse proxy: the proxy sets x-forwarded-proto=https
+//     (Caddy/Nginx/Traefik do by default) -> Secure.
+// A Secure cookie is dropped by browsers over plain HTTP, which is exactly the
+// silent-login failure we want to avoid on LAN deployments.
+function requestIsHttps(request: Request): boolean {
+	const forwarded = request.headers.get('x-forwarded-proto');
+	if (forwarded) return forwarded.split(',')[0].trim().toLowerCase() === 'https';
+	return false;
+}
+
+export function setSessionCookie(
+	cookies: Cookies,
+	token: string,
+	expiresAt: Date,
+	request: Request
+) {
 	cookies.set(SESSION_COOKIE, token, {
 		path: '/',
 		httpOnly: true,
 		sameSite: 'lax',
-		secure: secureCookies,
+		secure: originIsHttps || requestIsHttps(request),
 		expires: expiresAt
 	});
 }

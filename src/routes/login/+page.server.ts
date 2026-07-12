@@ -32,7 +32,7 @@ export const actions: Actions = {
 
 		const token = generateSessionToken();
 		const session = await createSession(token, user.id);
-		setSessionCookie(cookies, token, session.expiresAt);
+		setSessionCookie(cookies, token, session.expiresAt, request);
 
 		throw redirect(303, '/');
 	}

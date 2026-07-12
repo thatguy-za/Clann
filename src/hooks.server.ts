@@ -34,7 +34,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			event.locals.user = user;
 			event.locals.session = session;
 			// Refresh cookie expiry to match sliding session.
-			setSessionCookie(event.cookies, token, session.expiresAt);
+			setSessionCookie(event.cookies, token, session.expiresAt, event.request);
 		} else {
 			event.locals.user = null;
 			event.locals.session = null;

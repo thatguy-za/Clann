@@ -12,10 +12,13 @@ services:
     ports:
       - '3000:3000'
     environment:
-      # Public origin of the app. REQUIRED in production behind a proxy —
-      # SvelteKit's form-action CSRF check compares the request Origin to this.
-      # Set it to the exact URL users visit, e.g. https://tree.example.com
-      ORIGIN: http://localhost:3000
+      # No ORIGIN needed: the app works on any host/port and behind a reverse
+      # proxy out of the box. Session cookies are marked Secure automatically
+      # when the request arrives over HTTPS (proxy sets x-forwarded-proto).
+      #
+      # Optional: set ORIGIN to your exact public URL to force Secure cookies,
+      # e.g. ORIGIN: https://tree.example.com
+      #
       # Paths inside the container (kept on the volume below).
       DATABASE_PATH: /data/app.db
       UPLOAD_DIR: /data/uploads
