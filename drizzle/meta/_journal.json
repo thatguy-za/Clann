@@ -8,6 +8,13 @@
       "when": 1783842180720,
       "tag": "0000_spicy_ares",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1783870668894,
+      "tag": "0001_tiny_giant_man",
+      "breakpoints": true
     }
   ]
 }

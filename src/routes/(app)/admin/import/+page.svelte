@@ -32,6 +32,14 @@
 				<strong>{form.imported.relationships}</strong> relationships from
 				<code>{form.imported.filename}</code>.
 			</p>
+			{#if form.imported.events || form.imported.photos}
+				<p class="muted extras">
+					Also imported {form.imported.events}
+					{form.imported.events === 1 ? 'life event' : 'life events'}
+					and {form.imported.photos}
+					{form.imported.photos === 1 ? 'photo' : 'photos'}.
+				</p>
+			{/if}
 			<a class="btn" href="/">View the tree</a>
 		</div>
 	{:else}

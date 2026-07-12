@@ -33,3 +33,14 @@ export function formatDisplayDate(value: string | null | undefined): string {
 	}
 	return trimmed;
 }
+
+/**
+ * Extract the year from a stored date for compact display (e.g. "1992/07/11"
+ * -> "1992", "abt 1850" -> "1850"). Falls back to the raw value if no 4-digit
+ * year is present.
+ */
+export function yearOf(value: string | null | undefined): string {
+	if (!value) return '';
+	const m = value.match(/\d{4}/);
+	return m ? m[0] : value.trim();
+}

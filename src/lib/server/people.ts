@@ -9,13 +9,13 @@ import {
 	type Person,
 	type Relationship
 } from './schema';
-import { deleteUpload } from './uploads';
+import { deleteUpload, saveUpload } from './uploads';
 import type { GedcomImport } from './gedcom';
 
 export type PersonInput = {
 	givenName: string;
 	familyName?: string | null;
-	sex: 'male' | 'female';
+	sex: 'male' | 'female' | null;
 	birthDate?: string | null;
 	deathDate?: string | null;
 	occupation?: string | null;
@@ -176,18 +176,42 @@ export function removeRelationship(relId: string) {
 
 // --- Bulk replace (GEDCOM import) --------------------------------------
 
-export type ReplaceResult = { people: number; relationships: number };
+export type ReplaceResult = {
+	people: number;
+	relationships: number;
+	events: number;
+	photos: number;
+};
 
 /**
  * Overwrite the ENTIRE tree with imported data: every person, relationship,
- * life event and photo is deleted first, then the import is inserted. The DB
- * work runs in a single transaction so a failure leaves the old data intact.
- * Photo files are removed from disk up front (that part is not transactional).
+ * life event and photo is deleted first, then the import is inserted. Embedded
+ * photos are written to disk before the DB work; the DB work then runs in a
+ * single transaction so a failure leaves the old data intact.
  */
 export async function replaceTree(data: GedcomImport): Promise<ReplaceResult> {
-	// Remove photo files first; the DB rows go with the people below.
+	// Remove the old photo files (their DB rows go with the people below).
 	const owned = db.select().from(photos).all();
 	await Promise.all(owned.map((p) => deleteUpload(p.filename)));
+
+	// Save any embedded import photos to disk up front (async). Unsupported
+	// or oversized images are skipped rather than failing the whole import.
+	const savedByXref = new Map<string, string[]>();
+	for (const gp of data.people) {
+		for (const media of gp.photos) {
+			try {
+				const buffer = Buffer.from(media.base64, 'base64');
+				if (buffer.length === 0) continue;
+				const file = new File([new Uint8Array(buffer)], 'import', { type: media.mime });
+				const filename = await saveUpload(file);
+				const arr = savedByXref.get(gp.xref) ?? [];
+				arr.push(filename);
+				savedByXref.set(gp.xref, arr);
+			} catch {
+				// Skip images saveUpload rejects (unsupported type / too large).
+			}
+		}
+	}
 
 	const now = new Date();
 	return db.transaction((tx) => {
@@ -198,6 +222,9 @@ export async function replaceTree(data: GedcomImport): Promise<ReplaceResult> {
 		tx.delete(people).run();
 
 		const idByXref = new Map<string, string>();
+		let eventCount = 0;
+		let photoCount = 0;
+
 		for (const gp of data.people) {
 			const id = randomUUID();
 			tx.insert(people)
@@ -208,11 +235,35 @@ export async function replaceTree(data: GedcomImport): Promise<ReplaceResult> {
 					sex: gp.sex,
 					birthDate: gp.birthDate,
 					deathDate: gp.deathDate,
+					occupation: gp.occupation?.trim() || null,
+					bio: gp.bio?.trim() || null,
 					createdAt: now,
 					updatedAt: now
 				})
 				.run();
 			idByXref.set(gp.xref, id);
+
+			for (const ev of gp.events) {
+				tx.insert(lifeEvents)
+					.values({
+						id: randomUUID(),
+						personId: id,
+						type: ev.type,
+						date: ev.date,
+						place: ev.place,
+						description: ev.description
+					})
+					.run();
+				eventCount++;
+			}
+
+			const files = savedByXref.get(gp.xref) ?? [];
+			files.forEach((filename, i) => {
+				tx.insert(photos)
+					.values({ id: randomUUID(), personId: id, filename, isPrimary: i === 0 })
+					.run();
+				photoCount++;
+			});
 		}
 
 		let relCount = 0;
@@ -246,7 +297,7 @@ export async function replaceTree(data: GedcomImport): Promise<ReplaceResult> {
 			}
 		}
 
-		return { people: idByXref.size, relationships: relCount };
+		return { people: idByXref.size, relationships: relCount, events: eventCount, photos: photoCount };
 	});
 }
 

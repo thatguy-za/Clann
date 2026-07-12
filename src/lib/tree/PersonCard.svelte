@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PersonSummary } from '$lib/server/buildGraph';
-	import { formatDisplayDate } from '$lib/formatDate';
+	import { formatDisplayDate, yearOf } from '$lib/formatDate';
 
 	let {
 		person,
@@ -22,10 +22,13 @@
 		return [p.givenName, p.familyName].filter(Boolean).join(' ');
 	}
 	const years = $derived.by(() => {
+		// When a lifespan is known (both dates), show just the years: "1992 – 2022".
+		if (person.birthDate && person.deathDate) {
+			return `${yearOf(person.birthDate)} – ${yearOf(person.deathDate)}`;
+		}
 		const born = formatDisplayDate(person.birthDate);
 		const died = formatDisplayDate(person.deathDate);
 		if (!born && !died) return '';
-		if (born && died) return `${born} – ${died}`;
 		if (died) return `? – ${died}`;
 		return born;
 	});
@@ -35,6 +38,7 @@
 	<a
 		class="node"
 		class:female={person.sex === 'female'}
+		class:unknown={!person.sex}
 		class:root
 		href={`/person/${person.id}`}
 		style="width:{width}px;height:{height}px;"
@@ -126,6 +130,9 @@
 	.node.female {
 		border-top-color: var(--female);
 	}
+	.node.unknown {
+		border-top-color: var(--text-muted);
+	}
 	.node.root {
 		box-shadow: 0 0 0 2px var(--primary);
 	}
@@ -144,6 +151,9 @@
 	}
 	.node.female .avatar {
 		background: var(--female);
+	}
+	.node.unknown .avatar {
+		background: var(--text-muted);
 	}
 	.avatar img {
 		width: 100%;

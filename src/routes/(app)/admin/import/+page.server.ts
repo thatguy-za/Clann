@@ -38,6 +38,8 @@ export const actions: Actions = {
 			imported: {
 				people: result.people,
 				relationships: result.relationships,
+				events: result.events,
+				photos: result.photos,
 				filename: file.name
 			}
 		};

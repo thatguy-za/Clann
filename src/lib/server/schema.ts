@@ -29,7 +29,8 @@ export const people = sqliteTable('people', {
 	id: text('id').primaryKey(),
 	givenName: text('given_name').notNull(),
 	familyName: text('family_name'),
-	sex: text('sex', { enum: ['male', 'female'] }).notNull(),
+	// Nullable: an unknown/blank sex is allowed (e.g. from a GEDCOM import).
+	sex: text('sex', { enum: ['male', 'female'] }),
 	birthDate: text('birth_date'),
 	deathDate: text('death_date'),
 	occupation: text('occupation'),

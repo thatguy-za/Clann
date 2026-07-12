@@ -19,7 +19,7 @@ export type PersonSummary = {
 	id: string;
 	givenName: string;
 	familyName: string | null;
-	sex: 'male' | 'female';
+	sex: 'male' | 'female' | null;
 	birthDate: string | null;
 	deathDate: string | null;
 	primaryPhotoId: string | null;
@@ -83,7 +83,8 @@ export function buildTree(): TreeData {
 
 		nodes.push({
 			id: p.id,
-			gender: p.sex,
+			// relatives-tree needs a gender for layout; default unknown to male.
+			gender: p.sex ?? 'male',
 			parents,
 			children: childrenOf.get(p.id) ?? [],
 			siblings,

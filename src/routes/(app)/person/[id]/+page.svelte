@@ -28,7 +28,7 @@
 		<!-- Left: profile -->
 		<div class="col">
 			<section class="card profile">
-				<div class="avatar" class:female={d.person.sex === 'female'}>
+				<div class="avatar" class:female={d.person.sex === 'female'} class:unknown={!d.person.sex}>
 					{#if primary}
 						<img src={`/api/photos/${primary.id}`} alt={fullName(d.person)} />
 					{:else}
@@ -78,6 +78,7 @@
 							<div class="field">
 								<label for="sex">Sex</label>
 								<select id="sex" name="sex">
+									<option value="" selected={!d.person.sex}>Unknown</option>
 									<option value="male" selected={d.person.sex === 'male'}>Male</option>
 									<option value="female" selected={d.person.sex === 'female'}>Female</option>
 								</select>
@@ -169,7 +170,7 @@
 								{#each group.list as r (r.relId)}
 									<li>
 										<a href={`/person/${r.person.id}`}>
-											<span class="dot" class:female={r.person.sex === 'female'}></span>
+											<span class="dot" class:female={r.person.sex === 'female'} class:unknown={!r.person.sex}></span>
 											{fullName(r.person)}
 										</a>
 										{#if r.kind !== 'blood' && r.kind !== 'married'}
@@ -306,6 +307,9 @@
 	}
 	.avatar.female {
 		background: var(--female);
+	}
+	.avatar.unknown {
+		background: var(--text-muted);
 	}
 	.avatar img {
 		width: 100%;
@@ -453,6 +457,9 @@
 	}
 	.dot.female {
 		background: var(--female);
+	}
+	.dot.unknown {
+		background: var(--text-muted);
 	}
 	.kind {
 		font-size: 0.7rem;

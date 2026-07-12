@@ -41,8 +41,8 @@
 				<div class="row">
 					<div class="field" style="flex:1;">
 						<label for="sex">Sex</label>
-						<select id="sex" name="sex" required>
-							<option value="">Select…</option>
+						<select id="sex" name="sex">
+							<option value="">Unknown</option>
 							<option value="male">Male</option>
 							<option value="female">Female</option>
 						</select>

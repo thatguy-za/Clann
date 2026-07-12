@@ -13,9 +13,9 @@ export const actions: Actions = {
 		requireAdmin(locals);
 		const data = await request.formData();
 		const givenName = (data.get('givenName') ?? '').toString().trim();
-		const sex = (data.get('sex') ?? '').toString();
+		const sexRaw = (data.get('sex') ?? '').toString();
 		if (!givenName) return fail(400, { error: 'Given name is required.' });
-		if (sex !== 'male' && sex !== 'female') return fail(400, { error: 'Please select a sex.' });
+		const sex = sexRaw === 'male' ? 'male' : sexRaw === 'female' ? 'female' : null;
 
 		const id = createPerson({
 			givenName,

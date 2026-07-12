@@ -30,9 +30,10 @@ function fields(data: FormData): PersonInput {
 	return {
 		givenName: (data.get('givenName') ?? '').toString(),
 		familyName: (data.get('familyName') ?? '').toString(),
-		sex: ((data.get('sex') ?? 'male').toString() === 'female' ? 'female' : 'male') as
-			| 'male'
-			| 'female',
+		sex: (() => {
+			const s = (data.get('sex') ?? '').toString();
+			return s === 'male' ? 'male' : s === 'female' ? 'female' : null;
+		})(),
 		birthDate: (data.get('birthDate') ?? '').toString(),
 		deathDate: (data.get('deathDate') ?? '').toString(),
 		occupation: (data.get('occupation') ?? '').toString(),
