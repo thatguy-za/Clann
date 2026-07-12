@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PersonSummary } from '$lib/server/buildGraph';
+	import { formatDisplayDate } from '$lib/formatDate';
 
 	let {
 		person,
@@ -11,11 +12,14 @@
 	function fullName(p: PersonSummary) {
 		return [p.givenName, p.familyName].filter(Boolean).join(' ');
 	}
-	const years = $derived(
-		[person.birthDate, person.deathDate].some(Boolean)
-			? `${person.birthDate ?? '?'}${person.deathDate ? `–${person.deathDate}` : ''}`
-			: ''
-	);
+	const years = $derived.by(() => {
+		const born = formatDisplayDate(person.birthDate);
+		const died = formatDisplayDate(person.deathDate);
+		if (!born && !died) return '';
+		if (born && died) return `${born} – ${died}`;
+		if (died) return `? – ${died}`;
+		return born;
+	});
 </script>
 
 <a
