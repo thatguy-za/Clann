@@ -84,11 +84,21 @@
 							</div>
 							<div class="field">
 								<label for="birthDate">Born</label>
-								<input id="birthDate" name="birthDate" value={d.person.birthDate ?? ''} />
+								<input
+									id="birthDate"
+									name="birthDate"
+									value={d.person.birthDate ?? ''}
+									placeholder="Date (YYYY/MM/DD)"
+								/>
 							</div>
 							<div class="field">
 								<label for="deathDate">Died</label>
-								<input id="deathDate" name="deathDate" value={d.person.deathDate ?? ''} />
+								<input
+									id="deathDate"
+									name="deathDate"
+									value={d.person.deathDate ?? ''}
+									placeholder="Date (YYYY/MM/DD)"
+								/>
 							</div>
 						</div>
 						<div class="field">
@@ -237,7 +247,7 @@
 						<h3>Add event</h3>
 						<div class="row">
 							<input name="type" placeholder="Type (e.g. Marriage)" required />
-							<input name="date" placeholder="Date" />
+							<input name="date" placeholder="Date (YYYY/MM/DD)" />
 						</div>
 						<input name="place" placeholder="Place" />
 						<input name="description" placeholder="Description" />

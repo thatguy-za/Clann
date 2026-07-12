@@ -49,7 +49,7 @@
 					</div>
 					<div class="field" style="flex:1;">
 						<label for="birthDate">Born</label>
-						<input id="birthDate" name="birthDate" placeholder="e.g. 1901 or 1901-04-12" />
+						<input id="birthDate" name="birthDate" placeholder="Date (YYYY/MM/DD)" />
 					</div>
 				</div>
 				<button type="submit">Add person</button>
