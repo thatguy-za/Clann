@@ -1,8 +1,12 @@
 services:
   clann:
-    build: .
-    # Or use a prebuilt multi-arch image instead of building locally:
-    # image: youruser/clann:latest
+    # Prebuilt multi-arch image published to GHCR on each GitHub release.
+    # Pin to a version (e.g. ghcr.io/thatguy-za/clann:0.1) for reproducible
+    # deploys, or keep :latest to always pull the newest release.
+    image: ghcr.io/thatguy-za/clann:latest
+    # To build locally from source instead, comment out `image:` above and
+    # uncomment the line below:
+    # build: .
     container_name: clann
     restart: unless-stopped
     ports:
