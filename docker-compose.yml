@@ -1,0 +1,22 @@
+services:
+  clann:
+    build: .
+    # Or use a prebuilt multi-arch image instead of building locally:
+    # image: youruser/clann:latest
+    container_name: clann
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      # Public origin of the app. REQUIRED in production behind a proxy —
+      # SvelteKit's form-action CSRF check compares the request Origin to this.
+      # Set it to the exact URL users visit, e.g. https://tree.example.com
+      ORIGIN: http://localhost:3000
+      # Paths inside the container (kept on the volume below).
+      DATABASE_PATH: /data/app.db
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - clann_data:/data
+
+volumes:
+  clann_data:
