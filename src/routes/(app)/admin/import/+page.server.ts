@@ -4,7 +4,10 @@ import { listPeople, replaceTree } from '$lib/server/people';
 import { parseGedcom } from '$lib/server/gedcom';
 import type { Actions, PageServerLoad } from './$types';
 
-const MAX_BYTES = 25 * 1024 * 1024; // 25 MB
+// Generous: an export with embedded photos can be large (base64 inflates
+// media by ~a third). The server must also allow bodies this big — see
+// BODY_SIZE_LIMIT in docker-compose.yml.
+const MAX_BYTES = 250 * 1024 * 1024; // 250 MB
 
 export const load: PageServerLoad = async ({ locals }) => {
 	requireAdmin(locals);
@@ -21,7 +24,7 @@ export const actions: Actions = {
 			return fail(400, { error: 'Please choose a GEDCOM (.ged) file.' });
 		}
 		if (file.size > MAX_BYTES) {
-			return fail(400, { error: 'That file is too large (max 25 MB).' });
+			return fail(400, { error: 'That file is too large (max 250 MB).' });
 		}
 
 		const text = await file.text();

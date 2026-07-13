@@ -19,6 +19,10 @@ services:
       # Optional: set ORIGIN to your exact public URL to force Secure cookies,
       # e.g. ORIGIN: https://tree.example.com
       #
+      # Allow large uploads: a GEDCOM export with embedded photos can be
+      # hundreds of MB. adapter-node defaults to a 512K body limit, which
+      # would block imports. 'Infinity' disables the limit (admin-only import).
+      BODY_SIZE_LIMIT: Infinity
       # Paths inside the container (kept on the volume below).
       DATABASE_PATH: /data/app.db
       UPLOAD_DIR: /data/uploads

@@ -56,7 +56,7 @@ const MONTHS: Record<string, string> = {
 // Common INDI event/fact tags -> human-readable labels. BIRT/DEAT are handled
 // separately (they set the person's birth/death dates), and OCCU maps to the
 // occupation field.
-const EVENT_LABELS: Record<string, string> = {
+export const EVENT_LABELS: Record<string, string> = {
 	BAPM: 'Baptism', CHR: 'Christening', BLES: 'Blessing', BURI: 'Burial',
 	CREM: 'Cremation', ADOP: 'Adoption', CONF: 'Confirmation', FCOM: 'First communion',
 	ORDN: 'Ordination', NATU: 'Naturalization', EMIG: 'Emigration', IMMI: 'Immigration',
