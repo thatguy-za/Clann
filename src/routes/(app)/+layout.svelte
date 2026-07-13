@@ -3,7 +3,18 @@
 	import ThemeToggle from '$lib/ThemeToggle.svelte';
 	let { data, children } = $props();
 	const isAdmin = $derived(data.user.role === 'admin');
+	const initial = $derived((data.user.username[0] ?? '?').toUpperCase());
+
+	let accountOpen = $state(false);
+	function onWindowClick(e: MouseEvent) {
+		if (accountOpen && !(e.target as HTMLElement).closest('.account-menu')) accountOpen = false;
+	}
+	function onWindowKey(e: KeyboardEvent) {
+		if (e.key === 'Escape') accountOpen = false;
+	}
 </script>
+
+<svelte:window onclick={onWindowClick} onkeydown={onWindowKey} />
 
 <div class="app">
 	<header class="topbar">
@@ -42,13 +53,36 @@
 
 		<div class="account">
 			<ThemeToggle />
-			<span class="user">
-				{data.user.username}
-				<span class="role-badge" class:admin={isAdmin}>{data.user.role}</span>
-			</span>
-			<form method="POST" action="/logout">
-				<button class="btn-secondary" type="submit">Sign out</button>
-			</form>
+			<div class="account-menu">
+				<button
+					type="button"
+					class="avatar-btn"
+					class:open={accountOpen}
+					aria-haspopup="menu"
+					aria-expanded={accountOpen}
+					aria-label="Account menu"
+					onclick={() => (accountOpen = !accountOpen)}
+				>
+					<span class="avatar">{initial}</span>
+				</button>
+				{#if accountOpen}
+					<div class="account-dropdown" role="menu">
+						<a
+							class="account-name"
+							role="menuitem"
+							href="/account"
+							onclick={() => (accountOpen = false)}
+						>
+							<span class="avatar sm">{initial}</span>
+							<span class="account-name-text">{data.user.username}</span>
+						</a>
+						<div class="account-divider"></div>
+						<form method="POST" action="/logout">
+							<button class="account-item" type="submit">Log out</button>
+						</form>
+					</div>
+				{/if}
+			</div>
 		</div>
 	</header>
 
@@ -179,28 +213,90 @@
 	.account {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: 0.75rem;
 	}
-	.user {
+	.account-menu {
+		position: relative;
+	}
+	.avatar-btn {
+		padding: 0;
+		border: none;
+		background: none;
+		border-radius: 50%;
+		cursor: pointer;
+		line-height: 0;
+	}
+	.avatar-btn:hover .avatar,
+	.avatar-btn.open .avatar {
+		box-shadow: 0 0 0 2px var(--primary);
+	}
+	.avatar {
+		display: grid;
+		place-items: center;
+		width: 34px;
+		height: 34px;
+		border-radius: 50%;
+		background: var(--primary);
+		color: #fff;
+		font-weight: 600;
+		font-size: 0.95rem;
+		flex-shrink: 0;
+		transition: box-shadow 0.12s ease;
+	}
+	.avatar.sm {
+		width: 30px;
+		height: 30px;
+		font-size: 0.85rem;
+	}
+	.account-dropdown {
+		position: absolute;
+		top: calc(100% + 0.4rem);
+		right: 0;
+		min-width: 200px;
+		padding: 0.35rem;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-sm);
+		box-shadow: var(--shadow);
+		z-index: 20;
+	}
+	.account-name {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		font-weight: 500;
-		font-size: 0.9rem;
-	}
-	.role-badge {
-		font-size: 0.7rem;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		padding: 0.15rem 0.45rem;
-		border-radius: 100px;
-		background: var(--surface-2);
-		color: var(--text-muted);
+		gap: 0.6rem;
+		padding: 0.5rem 0.6rem;
+		border-radius: var(--radius-sm);
+		color: var(--text);
 		font-weight: 600;
 	}
-	.role-badge.admin {
-		background: var(--primary-soft);
-		color: var(--primary);
+	.account-name:hover {
+		background: var(--surface-2);
+		text-decoration: none;
+	}
+	.account-name-text {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.account-divider {
+		height: 1px;
+		background: var(--border);
+		margin: 0.35rem 0;
+	}
+	.account-item {
+		width: 100%;
+		text-align: left;
+		padding: 0.5rem 0.6rem;
+		border: none;
+		background: none;
+		border-radius: var(--radius-sm);
+		color: var(--text);
+		font-size: 0.9rem;
+		font-weight: 500;
+		cursor: pointer;
+	}
+	.account-item:hover {
+		background: var(--surface-2);
 	}
 	.content {
 		flex: 1;
@@ -210,9 +306,6 @@
 		.topbar {
 			gap: 0.75rem;
 			flex-wrap: wrap;
-		}
-		.user :global(span) {
-			display: none;
 		}
 	}
 </style>
