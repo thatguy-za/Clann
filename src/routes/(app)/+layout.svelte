@@ -6,6 +6,7 @@
 	const initial = $derived((data.user.username[0] ?? '?').toUpperCase());
 
 	let accountOpen = $state(false);
+	const closeAccount = () => (accountOpen = false);
 	function onWindowClick(e: MouseEvent) {
 		if (accountOpen && !(e.target as HTMLElement).closest('.account-menu')) accountOpen = false;
 	}
@@ -25,30 +26,26 @@
 
 		<nav class="nav">
 			<a class="nav-link" class:active={page.url.pathname === '/'} href="/">Tree</a>
-			{#if isAdmin}
-				<div class="menu">
-					<button
-						type="button"
-						class="nav-link kebab"
-						class:active={page.url.pathname.startsWith('/admin')}
-						aria-haspopup="menu"
-						aria-label="Manage"
-						title="Manage"
-					>
-						<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-							<circle cx="12" cy="5" r="2" />
-							<circle cx="12" cy="12" r="2" />
-							<circle cx="12" cy="19" r="2" />
-						</svg>
-					</button>
-					<div class="dropdown" role="menu">
-						<a role="menuitem" href="/admin">Add new person</a>
-						<a role="menuitem" href="/admin/import">Import family tree</a>
-						<a role="menuitem" href="/admin/export">Export family tree</a>
-					</div>
-				</div>
-			{/if}
 		</nav>
+
+		{#if isAdmin}
+			<a class="add-member" class:active={page.url.pathname === '/admin'} href="/admin">
+				<svg
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2.5"
+					stroke-linecap="round"
+					aria-hidden="true"
+				>
+					<line x1="12" y1="5" x2="12" y2="19" />
+					<line x1="5" y1="12" x2="19" y2="12" />
+				</svg>
+				<span>Add member</span>
+			</a>
+		{/if}
 
 		<div class="account">
 			<ThemeToggle />
@@ -66,25 +63,23 @@
 				</button>
 				{#if accountOpen}
 					<div class="account-dropdown" role="menu">
-						<a
-							class="account-name"
-							role="menuitem"
-							href="/account"
-							onclick={() => (accountOpen = false)}
-						>
+						<a class="account-name" role="menuitem" href="/account" onclick={closeAccount}>
 							<span class="avatar sm">{initial}</span>
 							<span class="account-name-text">{data.user.username}</span>
 						</a>
 						<div class="account-divider"></div>
 						{#if isAdmin}
-							<a
-								class="account-item"
-								role="menuitem"
-								href="/admin/users"
-								onclick={() => (accountOpen = false)}
-							>
+							<a class="account-item" role="menuitem" href="/admin/users" onclick={closeAccount}>
 								Manage users
 							</a>
+							<div class="account-divider"></div>
+							<a class="account-item" role="menuitem" href="/admin/import" onclick={closeAccount}>
+								Import family tree
+							</a>
+							<a class="account-item" role="menuitem" href="/admin/export" onclick={closeAccount}>
+								Export family tree
+							</a>
+							<div class="account-divider"></div>
 						{/if}
 						<form method="POST" action="/logout">
 							<button class="account-item" type="submit">Log out</button>
@@ -153,70 +148,22 @@
 		color: var(--primary);
 	}
 
-	/* Kebab (three-dots) menu */
-	.menu {
-		position: relative;
-	}
-	.kebab {
+	/* Primary call-to-action: add a member to the tree */
+	.add-member {
 		display: inline-flex;
 		align-items: center;
-		justify-content: center;
-		padding: 0.35rem 0.5rem;
-		background: none;
-		border: none;
-		cursor: pointer;
-		color: var(--text-muted);
-	}
-	.kebab:hover {
-		background: var(--surface-2);
-		color: var(--text);
-	}
-	.dropdown {
-		position: absolute;
-		top: calc(100% + 0.35rem);
-		left: 0;
-		min-width: 170px;
-		display: flex;
-		flex-direction: column;
-		padding: 0.3rem;
-		background: var(--surface);
-		border: 1px solid var(--border);
+		gap: 0.4rem;
+		padding: 0.45rem 0.85rem;
 		border-radius: var(--radius-sm);
-		box-shadow: var(--shadow);
-		opacity: 0;
-		visibility: hidden;
-		transform: translateY(-4px);
-		transition:
-			opacity 0.12s ease,
-			transform 0.12s ease,
-			visibility 0.12s;
-		z-index: 20;
-	}
-	/* Bridge the gap so the dropdown stays open while the pointer travels to it */
-	.dropdown::before {
-		content: '';
-		position: absolute;
-		bottom: 100%;
-		left: 0;
-		right: 0;
-		height: 0.35rem;
-	}
-	.menu:hover .dropdown,
-	.menu:focus-within .dropdown {
-		opacity: 1;
-		visibility: visible;
-		transform: translateY(0);
-	}
-	.dropdown a {
-		padding: 0.45rem 0.6rem;
-		border-radius: var(--radius-sm);
-		color: var(--text);
+		background: var(--primary);
+		color: #fff;
+		font-weight: 600;
 		font-size: 0.9rem;
-		font-weight: 500;
 		white-space: nowrap;
 	}
-	.dropdown a:hover {
-		background: var(--surface-2);
+	.add-member:hover {
+		background: var(--primary-hover);
+		color: #fff;
 		text-decoration: none;
 	}
 	.account {
