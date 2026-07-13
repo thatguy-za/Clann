@@ -9,6 +9,20 @@ container** backed by a **single SQLite file** — trivial to host and back up.
 
 ---
 
+## Screenshots
+
+The interactive family tree:
+
+![Clann family tree](docs/screenshots/tree.png)
+
+| A person's profile | Getting started |
+| --- | --- |
+| ![Person profile](docs/screenshots/profile.png) | ![First run](docs/screenshots/first-run.png) |
+
+<sub>Shown in light mode with sample data.</sub>
+
+---
+
 ## Features
 
 ### 🌳 Interactive family tree
