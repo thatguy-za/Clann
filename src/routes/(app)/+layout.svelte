@@ -43,7 +43,6 @@
 					</button>
 					<div class="dropdown" role="menu">
 						<a role="menuitem" href="/admin">Add new person</a>
-						<a role="menuitem" href="/admin/users">Manage users</a>
 						<a role="menuitem" href="/admin/import">Import family tree</a>
 						<a role="menuitem" href="/admin/export">Export family tree</a>
 					</div>
@@ -77,6 +76,16 @@
 							<span class="account-name-text">{data.user.username}</span>
 						</a>
 						<div class="account-divider"></div>
+						{#if isAdmin}
+							<a
+								class="account-item"
+								role="menuitem"
+								href="/admin/users"
+								onclick={() => (accountOpen = false)}
+							>
+								Manage users
+							</a>
+						{/if}
 						<form method="POST" action="/logout">
 							<button class="account-item" type="submit">Log out</button>
 						</form>
@@ -284,6 +293,8 @@
 		margin: 0.35rem 0;
 	}
 	.account-item {
+		display: block;
+		box-sizing: border-box;
 		width: 100%;
 		text-align: left;
 		padding: 0.5rem 0.6rem;
@@ -297,6 +308,7 @@
 	}
 	.account-item:hover {
 		background: var(--surface-2);
+		text-decoration: none;
 	}
 	.content {
 		flex: 1;
