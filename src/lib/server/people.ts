@@ -10,7 +10,42 @@ import {
 	type Relationship
 } from './schema';
 import { deleteUpload, saveUpload } from './uploads';
-import type { GedcomImport } from './gedcom';
+import type { GedcomImport, GedcomMedia } from './gedcom';
+
+const FETCH_TIMEOUT_MS = 20_000;
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_IMPORT_PHOTOS = 1000;
+const PHOTO_CONCURRENCY = 6;
+
+// Download a remote image referenced by a GEDCOM OBJE FILE URL. Guarded for
+// robustness (timeout, image content-type, size cap); returns null on any
+// problem so a bad URL never fails the whole import.
+async function fetchRemoteImage(url: string): Promise<File | null> {
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+	try {
+		const res = await fetch(url, { signal: controller.signal, redirect: 'follow' });
+		if (!res.ok) return null;
+		const type = (res.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+		if (!type.startsWith('image/')) return null;
+		const buf = Buffer.from(await res.arrayBuffer());
+		if (buf.length === 0 || buf.length > MAX_IMAGE_BYTES) return null;
+		return new File([new Uint8Array(buf)], 'import', { type });
+	} catch {
+		return null;
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
+async function mediaToFile(media: GedcomMedia): Promise<File | null> {
+	if (media.kind === 'embedded') {
+		const buffer = Buffer.from(media.base64, 'base64');
+		if (buffer.length === 0) return null;
+		return new File([new Uint8Array(buffer)], 'import', { type: media.mime });
+	}
+	return fetchRemoteImage(media.url);
+}
 
 export type PersonInput = {
 	givenName: string;
@@ -194,24 +229,34 @@ export async function replaceTree(data: GedcomImport): Promise<ReplaceResult> {
 	const owned = db.select().from(photos).all();
 	await Promise.all(owned.map((p) => deleteUpload(p.filename)));
 
-	// Save any embedded import photos to disk up front (async). Unsupported
-	// or oversized images are skipped rather than failing the whole import.
-	const savedByXref = new Map<string, string[]>();
+	// Save import photos to disk up front (async): embedded images are decoded,
+	// remote URLs are fetched. Runs with limited concurrency; anything that
+	// fails (bad URL, unsupported type, too large) is skipped, not fatal.
+	const savedByXref = new Map<string, { filename: string; primary: boolean }[]>();
+	const jobs: { xref: string; media: GedcomMedia }[] = [];
 	for (const gp of data.people) {
 		for (const media of gp.photos) {
-			try {
-				const buffer = Buffer.from(media.base64, 'base64');
-				if (buffer.length === 0) continue;
-				const file = new File([new Uint8Array(buffer)], 'import', { type: media.mime });
-				const filename = await saveUpload(file);
-				const arr = savedByXref.get(gp.xref) ?? [];
-				arr.push(filename);
-				savedByXref.set(gp.xref, arr);
-			} catch {
-				// Skip images saveUpload rejects (unsupported type / too large).
-			}
+			if (jobs.length >= MAX_IMPORT_PHOTOS) break;
+			jobs.push({ xref: gp.xref, media });
 		}
 	}
+	let jobIndex = 0;
+	const worker = async () => {
+		while (jobIndex < jobs.length) {
+			const job = jobs[jobIndex++];
+			const file = await mediaToFile(job.media);
+			if (!file) continue;
+			try {
+				const filename = await saveUpload(file);
+				const arr = savedByXref.get(job.xref) ?? [];
+				arr.push({ filename, primary: job.media.primary });
+				savedByXref.set(job.xref, arr);
+			} catch {
+				// saveUpload rejected (unsupported type / too large) — skip.
+			}
+		}
+	};
+	await Promise.all(Array.from({ length: Math.min(PHOTO_CONCURRENCY, jobs.length) }, worker));
 
 	const now = new Date();
 	return db.transaction((tx) => {
@@ -258,9 +303,13 @@ export async function replaceTree(data: GedcomImport): Promise<ReplaceResult> {
 			}
 
 			const files = savedByXref.get(gp.xref) ?? [];
-			files.forEach((filename, i) => {
+			const primaryIdx = Math.max(
+				0,
+				files.findIndex((f) => f.primary)
+			);
+			files.forEach((f, i) => {
 				tx.insert(photos)
-					.values({ id: randomUUID(), personId: id, filename, isPrimary: i === 0 })
+					.values({ id: randomUUID(), personId: id, filename: f.filename, isPrimary: i === primaryIdx })
 					.run();
 				photoCount++;
 			});

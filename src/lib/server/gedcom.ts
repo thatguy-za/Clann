@@ -10,9 +10,12 @@ export type GedcomEvent = {
 	description: string | null;
 };
 
-// Only embedded images (data: URIs / base64) can be imported from a lone .ged
-// file — external file paths and URLs reference data we don't have.
-export type GedcomMedia = { mime: string; base64: string };
+// A person's photo, either embedded in the file (data: URI / base64) or a
+// remote http(s) URL that the importer fetches. `primary` reflects the
+// GEDCOM _PRIM flag (the profile photo).
+export type GedcomMedia =
+	| { kind: 'embedded'; mime: string; base64: string; primary: boolean }
+	| { kind: 'url'; url: string; primary: boolean };
 
 export type GedcomPerson = {
 	xref: string;
@@ -150,7 +153,7 @@ function htmlToText(s: string): string {
 		.trim();
 }
 
-function parseDataUri(value: string): GedcomMedia | null {
+function parseDataUri(value: string): { mime: string; base64: string } | null {
 	const m = value.trim().match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
 	return m ? { mime: m[1].toLowerCase(), base64: m[2].replace(/\s+/g, '') } : null;
 }
@@ -212,7 +215,7 @@ export function parseGedcom(text: string): GedcomImport {
 	const mediaRecords = new Map<string, GedcomMedia | null>();
 	for (const r of records) {
 		if (r.xref && r.tag === 'NOTE') noteRecords.set(r.xref, nodeText(r));
-		if (r.xref && r.tag === 'OBJE') mediaRecords.set(r.xref, mediaFromObje(r, null));
+		if (r.xref && r.tag === 'OBJE') mediaRecords.set(r.xref, mediaFromObje(r));
 	}
 
 	function resolveNote(n: Node): string {
@@ -223,7 +226,7 @@ export function parseGedcom(text: string): GedcomImport {
 	function mediaFromObjeResolved(n: Node): GedcomMedia | null {
 		const ptr = pointer(n.value);
 		if (ptr) return mediaRecords.get(ptr) ?? null;
-		return mediaFromObje(n, null);
+		return mediaFromObje(n);
 	}
 
 	const people: GedcomPerson[] = [];
@@ -255,11 +258,18 @@ export function parseGedcom(text: string): GedcomImport {
 	};
 }
 
-function mediaFromObje(n: Node, _unused: null): GedcomMedia | null {
-	// GEDCOM 5.5.1: 1 OBJE / 2 FILE <data-uri>. Also accept a data URI directly.
+function mediaFromObje(n: Node): GedcomMedia | null {
+	// GEDCOM 5.5.1: 1 OBJE / 2 FILE <path|url|data-uri>. Also accept a value
+	// directly on the OBJE line.
 	const file = child(n, 'FILE');
-	const candidate = file?.value ?? n.value ?? '';
-	return parseDataUri(candidate);
+	const raw = (file?.value ?? n.value ?? '').trim();
+	const primary =
+		/^y/i.test(child(n, '_PRIM')?.value.trim() ?? '') ||
+		/^y/i.test(child(n, '_PERSONALPHOTO')?.value.trim() ?? '');
+	const data = parseDataUri(raw);
+	if (data) return { kind: 'embedded', mime: data.mime, base64: data.base64, primary };
+	if (/^https?:\/\//i.test(raw)) return { kind: 'url', url: raw, primary };
+	return null;
 }
 
 function parseIndividual(
