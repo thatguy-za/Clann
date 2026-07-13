@@ -2,6 +2,12 @@ import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 // --- Auth ---------------------------------------------------------------
 
+// Simple key/value app settings (e.g. the tree's display name).
+export const settings = sqliteTable('settings', {
+	key: text('key').primaryKey(),
+	value: text('value').notNull()
+});
+
 export const users = sqliteTable('users', {
 	id: text('id').primaryKey(),
 	username: text('username').notNull().unique(),

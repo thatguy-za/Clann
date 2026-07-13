@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { invalidateAll } from '$app/navigation';
 	import ThemeToggle from '$lib/ThemeToggle.svelte';
 	let { data, children } = $props();
 	const isAdmin = $derived(data.user.role === 'admin');
@@ -7,6 +8,45 @@
 
 	let accountOpen = $state(false);
 	const closeAccount = () => (accountOpen = false);
+
+	// Editable tree name (admins only).
+	let editingName = $state(false);
+	let nameInput = $state('');
+	let savingName = $state(false);
+	function startEditName() {
+		nameInput = data.treeName;
+		editingName = true;
+	}
+	function onNameKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			(e.target as HTMLInputElement).blur();
+		} else if (e.key === 'Escape') {
+			nameInput = data.treeName; // restore, so the blur-save is a no-op
+			(e.target as HTMLInputElement).blur();
+		}
+	}
+	async function saveName() {
+		if (!editingName) return;
+		const name = nameInput.trim();
+		editingName = false;
+		if (!name || name === data.treeName) return;
+		savingName = true;
+		try {
+			const res = await fetch('/admin/settings/tree-name', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ name })
+			});
+			if (res.ok) await invalidateAll();
+		} finally {
+			savingName = false;
+		}
+	}
+	function focusOnMount(node: HTMLInputElement) {
+		node.focus();
+		node.select();
+	}
 	function onWindowClick(e: MouseEvent) {
 		if (accountOpen && !(e.target as HTMLElement).closest('.account-menu')) accountOpen = false;
 	}
@@ -25,7 +65,34 @@
 		</a>
 
 		<nav class="nav">
-			<a class="nav-link" class:active={page.url.pathname === '/'} href="/">Tree</a>
+			{#if editingName}
+				<input
+					class="nav-title-input"
+					bind:value={nameInput}
+					maxlength="100"
+					disabled={savingName}
+					onkeydown={onNameKeydown}
+					onblur={saveName}
+					use:focusOnMount
+					aria-label="Tree name"
+				/>
+			{:else}
+				<a class="nav-link" class:active={page.url.pathname === '/'} href="/">{data.treeName}</a>
+				{#if isAdmin}
+					<button
+						class="edit-name"
+						type="button"
+						onclick={startEditName}
+						aria-label="Rename tree"
+						title="Rename tree"
+					>
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M12 20h9" />
+							<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+						</svg>
+					</button>
+				{/if}
+			{/if}
 		</nav>
 
 		{#if isAdmin}
@@ -146,6 +213,37 @@
 	.nav-link.active {
 		background: var(--primary-soft);
 		color: var(--primary);
+	}
+	.nav-title-input {
+		padding: 0.4rem 0.6rem;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--primary);
+		background: var(--surface-2);
+		color: var(--text);
+		font: inherit;
+		font-weight: 500;
+		min-width: 200px;
+	}
+	.edit-name {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.35rem;
+		border: none;
+		background: none;
+		color: var(--text-muted);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		opacity: 0;
+		transition: opacity 0.12s ease;
+	}
+	.nav:hover .edit-name,
+	.edit-name:focus-visible {
+		opacity: 1;
+	}
+	.edit-name:hover {
+		background: var(--surface-2);
+		color: var(--text);
 	}
 
 	/* Primary call-to-action: add a member to the tree */
