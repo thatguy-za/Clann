@@ -37,7 +37,11 @@
 				</div>
 				<h1>{fullName(d.person)}</h1>
 				{#if lifespan}<p class="lifespan muted">{lifespan}</p>{/if}
+				{#if d.person.causeOfDeath}
+					<p class="muted small">Cause of death: {d.person.causeOfDeath}</p>
+				{/if}
 				{#if d.person.occupation}<p class="occ">{d.person.occupation}</p>{/if}
+				{#if d.person.otherNames}<p class="altnames muted small">{d.person.otherNames}</p>{/if}
 				{#if d.person.bio}<p class="bio">{d.person.bio}</p>{/if}
 
 				{#if data.isAdmin}
@@ -103,12 +107,24 @@
 							</div>
 						</div>
 						<div class="field">
+							<label for="causeOfDeath">Cause of death</label>
+							<input id="causeOfDeath" name="causeOfDeath" value={d.person.causeOfDeath ?? ''} />
+						</div>
+						<div class="field">
 							<label for="occupation">Occupation</label>
 							<input id="occupation" name="occupation" value={d.person.occupation ?? ''} />
 						</div>
 						<div class="field">
+							<label for="otherNames">Other names</label>
+							<textarea id="otherNames" name="otherNames" rows="2">{d.person.otherNames ?? ''}</textarea>
+						</div>
+						<div class="field">
 							<label for="bio">Biography</label>
 							<textarea id="bio" name="bio">{d.person.bio ?? ''}</textarea>
+						</div>
+						<div class="field">
+							<label for="sources">Sources</label>
+							<textarea id="sources" name="sources" rows="3">{d.person.sources ?? ''}</textarea>
 						</div>
 						<button type="submit">Save changes</button>
 					</form>
@@ -181,6 +197,11 @@
 												<input type="hidden" name="relId" value={r.relId} />
 												<button class="mini danger" title="Unlink">✕</button>
 											</form>
+										{/if}
+										{#if r.date || r.place}
+											<span class="marriage muted small">
+												m.{r.date ? ` ${r.date}` : ''}{r.place ? ` · ${r.place}` : ''}
+											</span>
 										{/if}
 									</li>
 								{/each}
@@ -256,6 +277,18 @@
 					</form>
 				{/if}
 			</section>
+
+			<!-- Sources -->
+			{#if d.person.sources}
+				<section class="card panel">
+					<h2>Sources</h2>
+					<ul class="sources">
+						{#each d.person.sources.split('\n').filter(Boolean) as src (src)}
+							<li>{src}</li>
+						{/each}
+					</ul>
+				</section>
+			{/if}
 		</div>
 	</div>
 </div>
@@ -327,6 +360,29 @@
 		text-align: left;
 		margin-top: 1rem;
 		white-space: pre-wrap;
+	}
+	.altnames {
+		white-space: pre-line;
+		margin: 0.35rem 0;
+	}
+	.marriage {
+		display: block;
+		width: 100%;
+		margin-top: 0.1rem;
+	}
+	.sources {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.sources li {
+		font-size: 0.85rem;
+		color: var(--text-muted);
+		padding-left: 0.75rem;
+		border-left: 2px solid var(--border);
 	}
 	.admin-actions {
 		display: flex;

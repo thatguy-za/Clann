@@ -36,8 +36,11 @@ function fields(data: FormData): PersonInput {
 		})(),
 		birthDate: (data.get('birthDate') ?? '').toString(),
 		deathDate: (data.get('deathDate') ?? '').toString(),
+		causeOfDeath: (data.get('causeOfDeath') ?? '').toString(),
 		occupation: (data.get('occupation') ?? '').toString(),
-		bio: (data.get('bio') ?? '').toString()
+		otherNames: (data.get('otherNames') ?? '').toString(),
+		bio: (data.get('bio') ?? '').toString(),
+		sources: (data.get('sources') ?? '').toString()
 	};
 }
 

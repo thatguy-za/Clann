@@ -33,8 +33,13 @@ export const people = sqliteTable('people', {
 	sex: text('sex', { enum: ['male', 'female'] }),
 	birthDate: text('birth_date'),
 	deathDate: text('death_date'),
+	causeOfDeath: text('cause_of_death'),
 	occupation: text('occupation'),
+	// Alternate names (married, former, nickname, title) as a free-text list.
+	otherNames: text('other_names'),
 	bio: text('bio'),
+	// Aggregated source citations (imported from GEDCOM), free text.
+	sources: text('sources'),
 	createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
 });
@@ -55,7 +60,10 @@ export const relationships = sqliteTable('relationships', {
 		.references(() => people.id, { onDelete: 'cascade' }),
 	kind: text('kind', { enum: ['blood', 'married', 'divorced', 'adopted', 'half'] })
 		.notNull()
-		.default('blood')
+		.default('blood'),
+	// For spouse relationships: marriage date/place (free text like other dates).
+	date: text('date'),
+	place: text('place')
 });
 
 export const lifeEvents = sqliteTable('life_events', {

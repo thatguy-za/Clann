@@ -24,18 +24,28 @@ export type GedcomPerson = {
 	sex: 'male' | 'female' | null;
 	birthDate: string | null;
 	deathDate: string | null;
+	causeOfDeath: string | null;
 	occupation: string | null;
+	otherNames: string | null;
 	bio: string | null;
+	sources: string | null;
 	events: GedcomEvent[];
 	photos: GedcomMedia[];
+};
+
+export type GedcomSpouse = {
+	a: string;
+	b: string;
+	kind: 'married' | 'divorced';
+	date: string | null;
+	place: string | null;
 };
 
 export type GedcomImport = {
 	people: GedcomPerson[];
 	/** [parentXref, childXref] pairs */
 	parentChild: [string, string][];
-	/** [spouseAXref, spouseBXref] pairs */
-	spouses: [string, string][];
+	spouses: GedcomSpouse[];
 };
 
 const MONTHS: Record<string, string> = {
@@ -207,15 +217,32 @@ function nodeText(n: Node): string {
 	return text.trim();
 }
 
+// All descendant nodes with the given tag (any depth).
+function collectByTag(node: Node, tag: string): Node[] {
+	const out: Node[] = [];
+	const walk = (n: Node) => {
+		for (const c of n.children) {
+			if (c.tag === tag) out.push(c);
+			walk(c);
+		}
+	};
+	walk(node);
+	return out;
+}
+
 export function parseGedcom(text: string): GedcomImport {
 	const records = buildRecords(text);
 
 	// Resolve tables for pointer references.
 	const noteRecords = new Map<string, string>();
 	const mediaRecords = new Map<string, GedcomMedia | null>();
+	const sourceRecords = new Map<string, { author: string | null; title: string | null }>();
 	for (const r of records) {
 		if (r.xref && r.tag === 'NOTE') noteRecords.set(r.xref, nodeText(r));
 		if (r.xref && r.tag === 'OBJE') mediaRecords.set(r.xref, mediaFromObje(r));
+		if (r.xref && r.tag === 'SOUR') {
+			sourceRecords.set(r.xref, { author: childValue(r, 'AUTH'), title: childValue(r, 'TITL') });
+		}
 	}
 
 	function resolveNote(n: Node): string {
@@ -229,20 +256,42 @@ export function parseGedcom(text: string): GedcomImport {
 		return mediaFromObje(n);
 	}
 
+	// Turn a SOUR citation into a readable line: "Title — by Author".
+	function resolveSource(n: Node): string | null {
+		const ptr = pointer(n.value);
+		const rec = ptr ? sourceRecords.get(ptr) : null;
+		const title = rec?.title ?? (ptr ? null : n.value.trim() || null);
+		const author = rec?.author ?? null;
+		if (!title && !author) return null;
+		return author ? `${title ?? 'Source'} — by ${author}` : (title as string);
+	}
+
 	const people: GedcomPerson[] = [];
 	const byXref = new Set<string>();
 	const parentChild: [string, string][] = [];
-	const spouses: [string, string][] = [];
+	const spouses: GedcomSpouse[] = [];
 
 	for (const rec of records) {
 		if (rec.tag === 'INDI' && rec.xref) {
-			people.push(parseIndividual(rec, resolveNote, mediaFromObjeResolved));
+			people.push(parseIndividual(rec, resolveNote, mediaFromObjeResolved, resolveSource));
 			byXref.add(rec.xref);
 		} else if (rec.tag === 'FAM') {
 			const husb = childValue(rec, 'HUSB');
 			const wife = childValue(rec, 'WIFE');
 			const parents = [husb, wife].map((v) => (v ? pointer(v) : null)).filter((x): x is string => !!x);
-			if (parents.length === 2) spouses.push([parents[0], parents[1]]);
+			if (parents.length === 2) {
+				const marr = child(rec, 'MARR');
+				const div = child(rec, 'DIV');
+				const divorced = !!div && !/^n/i.test(div.value.trim());
+				const marrDate = marr ? childValue(marr, 'DATE') : null;
+				spouses.push({
+					a: parents[0],
+					b: parents[1],
+					kind: divorced ? 'divorced' : 'married',
+					date: marrDate ? convertDate(marrDate) : null,
+					place: marr ? childValue(marr, 'PLAC') : null
+				});
+			}
 			for (const c of rec.children.filter((c) => c.tag === 'CHIL')) {
 				const cp = pointer(c.value);
 				if (cp) for (const p of parents) parentChild.push([p, cp]);
@@ -254,7 +303,7 @@ export function parseGedcom(text: string): GedcomImport {
 	return {
 		people,
 		parentChild: parentChild.filter(([p, c]) => known(p) && known(c)),
-		spouses: spouses.filter(([a, b]) => known(a) && known(b))
+		spouses: spouses.filter((s) => known(s.a) && known(s.b))
 	};
 }
 
@@ -275,7 +324,8 @@ function mediaFromObje(n: Node): GedcomMedia | null {
 function parseIndividual(
 	rec: Node,
 	resolveNote: (n: Node) => string,
-	resolveMedia: (n: Node) => GedcomMedia | null
+	resolveMedia: (n: Node) => GedcomMedia | null,
+	resolveSource: (n: Node) => string | null
 ): GedcomPerson {
 	const person: GedcomPerson = {
 		xref: rec.xref as string,
@@ -284,13 +334,17 @@ function parseIndividual(
 		sex: null,
 		birthDate: null,
 		deathDate: null,
+		causeOfDeath: null,
 		occupation: null,
+		otherNames: null,
 		bio: null,
+		sources: null,
 		events: [],
 		photos: []
 	};
 
 	const notes: string[] = [];
+	const altNames = new Set<string>();
 
 	for (const node of rec.children) {
 		const tag = node.tag;
@@ -303,6 +357,16 @@ function parseIndividual(
 			const surn = childValue(node, 'SURN');
 			if (givn && !person.givenName) person.givenName = givn;
 			if (surn && !person.familyName) person.familyName = surn;
+			// Alternate-name subtags.
+			const marnm = childValue(node, '_MARNM');
+			const npfx = childValue(node, 'NPFX');
+			const nick = childValue(node, 'NICK');
+			if (marnm && marnm.toLowerCase() !== (person.familyName ?? '').toLowerCase())
+				altNames.add(`Married name: ${marnm}`);
+			if (npfx) altNames.add(`Title: ${npfx}`);
+			if (nick) altNames.add(`Nickname: ${nick}`);
+		} else if (tag === '_FORMERNAME') {
+			if (node.value.trim()) altNames.add(`Formerly: ${node.value.trim()}`);
 		} else if (tag === 'SEX') {
 			const s = node.value.trim().toUpperCase();
 			person.sex = s === 'M' ? 'male' : s === 'F' ? 'female' : null;
@@ -310,6 +374,8 @@ function parseIndividual(
 			person.birthDate = childValue(node, 'DATE') ? convertDate(childValue(node, 'DATE') as string) : person.birthDate;
 		} else if (tag === 'DEAT') {
 			person.deathDate = childValue(node, 'DATE') ? convertDate(childValue(node, 'DATE') as string) : person.deathDate;
+			const caus = childValue(node, 'CAUS');
+			if (caus) person.causeOfDeath = caus;
 		} else if (tag === 'OCCU') {
 			if (node.value.trim()) person.occupation = node.value.trim();
 		} else if (tag === 'NOTE') {
@@ -335,6 +401,15 @@ function parseIndividual(
 	}
 
 	if (notes.length) person.bio = notes.join('\n\n');
+	if (altNames.size) person.otherNames = [...altNames].join('\n');
+
+	// Aggregate source citations found anywhere in the record.
+	const sourceLines = new Set<string>();
+	for (const s of collectByTag(rec, 'SOUR')) {
+		const line = resolveSource(s);
+		if (line) sourceLines.add(line);
+	}
+	if (sourceLines.size) person.sources = [...sourceLines].join('\n');
 
 	// Separate a leading "(role/title)" prefix from the name and store it apart.
 	// Job/title prefixes go to the occupation field; birth descriptors like

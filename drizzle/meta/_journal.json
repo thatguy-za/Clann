@@ -15,6 +15,13 @@
       "when": 1783870668894,
       "tag": "0001_tiny_giant_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1783931237909,
+      "tag": "0002_flat_sugar_man",
+      "breakpoints": true
     }
   ]
 }

@@ -53,8 +53,11 @@ export type PersonInput = {
 	sex: 'male' | 'female' | null;
 	birthDate?: string | null;
 	deathDate?: string | null;
+	causeOfDeath?: string | null;
 	occupation?: string | null;
+	otherNames?: string | null;
 	bio?: string | null;
+	sources?: string | null;
 };
 
 export function listPeople(): Person[] {
@@ -65,7 +68,13 @@ export function getPerson(id: string): Person | undefined {
 	return db.select().from(people).where(eq(people.id, id)).get();
 }
 
-export type RelatedPerson = { relId: string; kind: Relationship['kind']; person: Person };
+export type RelatedPerson = {
+	relId: string;
+	kind: Relationship['kind'];
+	date?: string | null;
+	place?: string | null;
+	person: Person;
+};
 
 export type PersonDetail = {
 	person: Person;
@@ -111,7 +120,7 @@ export function getPersonDetail(id: string): PersonDetail | null {
 		} else {
 			const otherId = r.fromId === id ? r.toId : r.fromId;
 			const s = getPerson(otherId);
-			if (s) spouses.push({ relId: r.id, kind: r.kind, person: s });
+			if (s) spouses.push({ relId: r.id, kind: r.kind, date: r.date, place: r.place, person: s });
 		}
 	}
 
@@ -154,8 +163,11 @@ function normalize(input: PersonInput) {
 		sex: input.sex,
 		birthDate: blankToNull(input.birthDate),
 		deathDate: blankToNull(input.deathDate),
+		causeOfDeath: blankToNull(input.causeOfDeath),
 		occupation: blankToNull(input.occupation),
-		bio: blankToNull(input.bio)
+		otherNames: blankToNull(input.otherNames),
+		bio: blankToNull(input.bio),
+		sources: blankToNull(input.sources)
 	};
 }
 
@@ -280,8 +292,11 @@ export async function replaceTree(data: GedcomImport): Promise<ReplaceResult> {
 					sex: gp.sex,
 					birthDate: gp.birthDate,
 					deathDate: gp.deathDate,
+					causeOfDeath: gp.causeOfDeath?.trim() || null,
 					occupation: gp.occupation?.trim() || null,
+					otherNames: gp.otherNames?.trim() || null,
 					bio: gp.bio?.trim() || null,
+					sources: gp.sources?.trim() || null,
 					createdAt: now,
 					updatedAt: now
 				})
@@ -321,13 +336,15 @@ export async function replaceTree(data: GedcomImport): Promise<ReplaceResult> {
 			type: 'parent-child' | 'spouse',
 			fromId: string,
 			toId: string,
-			kind: Relationship['kind']
+			kind: Relationship['kind'],
+			date: string | null = null,
+			place: string | null = null
 		) => {
 			// De-dupe (a spouse pair can appear from both directions).
 			const key = type === 'spouse' ? [type, ...[fromId, toId].sort()].join(':') : `${type}:${fromId}:${toId}`;
 			if (seen.has(key)) return;
 			seen.add(key);
-			tx.insert(relationships).values({ id: randomUUID(), type, fromId, toId, kind }).run();
+			tx.insert(relationships).values({ id: randomUUID(), type, fromId, toId, kind, date, place }).run();
 			relCount++;
 		};
 
@@ -338,11 +355,11 @@ export async function replaceTree(data: GedcomImport): Promise<ReplaceResult> {
 				insertRel('parent-child', parentId, childId, 'blood');
 			}
 		}
-		for (const [aXref, bXref] of data.spouses) {
-			const aId = idByXref.get(aXref);
-			const bId = idByXref.get(bXref);
+		for (const s of data.spouses) {
+			const aId = idByXref.get(s.a);
+			const bId = idByXref.get(s.b);
 			if (aId && bId && aId !== bId) {
-				insertRel('spouse', aId, bId, 'married');
+				insertRel('spouse', aId, bId, s.kind, s.date, s.place);
 			}
 		}
 
