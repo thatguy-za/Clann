@@ -103,7 +103,7 @@
 			<div class="empty-mark">⛬</div>
 			<h2>Start your family tree</h2>
 			{#if isAdmin}
-				<p class="muted">Add the first person — you can build out their relatives from there.</p>
+				<p class="muted">Add your first person, or import an existing family tree.</p>
 				<form method="POST" action="?/addFirstPerson" class="first-form" use:enhance={submitFirst}>
 					{#if firstError}<div class="error">{firstError}</div>{/if}
 					<div class="field">
@@ -132,6 +132,10 @@
 						{addingFirst ? 'Adding…' : 'Add first person'}
 					</button>
 				</form>
+				<div class="or"><span>or</span></div>
+				<a class="btn btn-secondary import-link" href="/admin/import">
+					Import a family tree (GEDCOM)
+				</a>
 			{:else}
 				<p class="muted">There's no one here yet. Ask an admin to add the first person.</p>
 			{/if}
@@ -319,5 +323,25 @@
 	}
 	.first-form button {
 		margin-top: 0.5rem;
+	}
+	.or {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		margin: 1.25rem 0;
+		color: var(--text-muted);
+		font-size: 0.85rem;
+	}
+	.or::before,
+	.or::after {
+		content: '';
+		flex: 1;
+		height: 1px;
+		background: var(--border);
+	}
+	.import-link {
+		display: inline-flex;
+		justify-content: center;
+		width: 100%;
 	}
 </style>
