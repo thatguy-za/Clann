@@ -7,6 +7,14 @@ container** backed by a **single SQLite file** — trivial to host and back up.
 
 > Admins build and edit the tree; viewers browse it read-only.
 
+> [!WARNING]
+> **Vibe-coded — please keep it off the public internet.** Clann was built
+> quickly and for fun (with a lot of AI help). It hasn't been security-audited
+> or hardened for hostile traffic, so **don't expose it directly to the open
+> internet.** Run it on your home network / LAN, over a VPN (e.g.
+> [Tailscale](https://tailscale.com)), or behind an authenticating reverse
+> proxy. It's meant for a small, trusted circle — your family — not the world.
+
 ---
 
 ## Screenshots
@@ -140,3 +148,14 @@ automatically on server start; after editing `src/lib/server/schema.ts`, run
 
 Releases are cut as GitHub Releases (tags `v*`), which trigger a GitHub Actions
 workflow that builds and publishes the multi-arch image to GHCR.
+
+---
+
+## License
+
+[PolyForm Noncommercial License 1.0.0](LICENSE).
+
+In plain English: you're free to **use Clann for personal, hobby, family, and
+other non-commercial purposes**, and to **modify it and share your changes**
+under the same terms. **Commercial use is not permitted.** See [LICENSE](LICENSE)
+for the full text.
