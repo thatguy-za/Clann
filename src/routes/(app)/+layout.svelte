@@ -95,25 +95,6 @@
 			{/if}
 		</nav>
 
-		{#if isAdmin}
-			<a class="add-member" class:active={page.url.pathname === '/admin'} href="/admin">
-				<svg
-					width="16"
-					height="16"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2.5"
-					stroke-linecap="round"
-					aria-hidden="true"
-				>
-					<line x1="12" y1="5" x2="12" y2="19" />
-					<line x1="5" y1="12" x2="19" y2="12" />
-				</svg>
-				<span>Add member</span>
-			</a>
-		{/if}
-
 		<div class="account">
 			<ThemeToggle />
 			<div class="account-menu">
@@ -246,24 +227,6 @@
 		color: var(--text);
 	}
 
-	/* Primary call-to-action: add a member to the tree */
-	.add-member {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		padding: 0.45rem 0.85rem;
-		border-radius: var(--radius-sm);
-		background: var(--primary);
-		color: #fff;
-		font-weight: 600;
-		font-size: 0.9rem;
-		white-space: nowrap;
-	}
-	.add-member:hover {
-		background: var(--primary-hover);
-		color: #fff;
-		text-decoration: none;
-	}
 	.account {
 		display: flex;
 		align-items: center;

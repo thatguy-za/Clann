@@ -29,6 +29,23 @@ const RELATIONS: Record<string, RelDef> = {
 };
 
 export const actions: Actions = {
+	// First-run: create the very first person in an empty tree.
+	addFirstPerson: async ({ request, locals }) => {
+		requireAdmin(locals);
+		const data = await request.formData();
+		const givenName = (data.get('givenName') ?? '').toString().trim();
+		if (!givenName) return fail(400, { error: 'Please enter a name.' });
+		const sexRaw = (data.get('sex') ?? '').toString();
+		const sex = sexRaw === 'male' ? 'male' : sexRaw === 'female' ? 'female' : null;
+		const id = createPerson({
+			givenName,
+			familyName: (data.get('familyName') ?? '').toString(),
+			sex,
+			birthDate: (data.get('birthDate') ?? '').toString()
+		});
+		return { added: true, newId: id };
+	},
+
 	addRelative: async ({ request, locals }) => {
 		requireAdmin(locals);
 		const data = await request.formData();

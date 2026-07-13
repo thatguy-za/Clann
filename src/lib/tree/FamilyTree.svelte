@@ -1,10 +1,24 @@
 <script lang="ts">
 	import calcTree from 'relatives-tree';
+	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import type { TreeData, PersonSummary } from '$lib/server/buildGraph';
 	import PersonCard from './PersonCard.svelte';
 	import AddRelativeModal from './AddRelativeModal.svelte';
 
 	let { tree, isAdmin = false }: { tree: TreeData; isAdmin?: boolean } = $props();
+
+	// First-run form state (shown when the tree is empty).
+	let firstError = $state('');
+	let addingFirst = $state(false);
+	const submitFirst = () => {
+		addingFirst = true;
+		return async ({ result }: { result: { type: string; data?: Record<string, unknown> } }) => {
+			addingFirst = false;
+			if (result.type === 'success') await invalidateAll();
+			else if (result.type === 'failure') firstError = (result.data?.error as string) ?? 'Could not add.';
+		};
+	};
 
 	// Which person we're adding a relative to (null = modal closed).
 	let addAnchor = $state<PersonSummary | null>(null);
@@ -87,9 +101,40 @@
 	<div class="empty">
 		<div class="empty-card card">
 			<div class="empty-mark">⛬</div>
-			<h2>No one here yet</h2>
-			<p class="muted">Add people and link their relationships to see the tree.</p>
-			<a class="btn" href="/admin">Add people</a>
+			<h2>Start your family tree</h2>
+			{#if isAdmin}
+				<p class="muted">Add the first person — you can build out their relatives from there.</p>
+				<form method="POST" action="?/addFirstPerson" class="first-form" use:enhance={submitFirst}>
+					{#if firstError}<div class="error">{firstError}</div>{/if}
+					<div class="field">
+						<label for="first-given">Given name</label>
+						<input id="first-given" name="givenName" required />
+					</div>
+					<div class="field">
+						<label for="first-family">Family name</label>
+						<input id="first-family" name="familyName" />
+					</div>
+					<div class="row">
+						<div class="field" style="flex:1;">
+							<label for="first-sex">Sex</label>
+							<select id="first-sex" name="sex">
+								<option value="">Unknown</option>
+								<option value="male">Male</option>
+								<option value="female">Female</option>
+							</select>
+						</div>
+						<div class="field" style="flex:1;">
+							<label for="first-born">Born</label>
+							<input id="first-born" name="birthDate" placeholder="Date (YYYY/MM/DD)" />
+						</div>
+					</div>
+					<button type="submit" disabled={addingFirst} style="width:100%;justify-content:center;">
+						{addingFirst ? 'Adding…' : 'Add first person'}
+					</button>
+				</form>
+			{:else}
+				<p class="muted">There's no one here yet. Ask an admin to add the first person.</p>
+			{/if}
 		</div>
 	</div>
 {:else}
@@ -255,7 +300,7 @@
 	.empty-card {
 		text-align: center;
 		padding: 2.5rem;
-		max-width: 360px;
+		max-width: 380px;
 	}
 	.empty-mark {
 		font-size: 2.5rem;
@@ -264,7 +309,15 @@
 	.empty-card h2 {
 		margin: 0.5rem 0;
 	}
-	.empty-card .btn {
-		margin-top: 1rem;
+	.first-form {
+		text-align: left;
+		margin-top: 1.5rem;
+	}
+	.first-form .row {
+		display: flex;
+		gap: 0.75rem;
+	}
+	.first-form button {
+		margin-top: 0.5rem;
 	}
 </style>
