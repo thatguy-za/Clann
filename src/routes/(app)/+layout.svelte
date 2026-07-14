@@ -60,7 +60,12 @@
 <div class="app">
 	<header class="topbar">
 		<a class="brand" href="/">
-			<span class="brand-mark">⛬</span>
+			<svg class="brand-mark" viewBox="0 0 64 64" width="26" height="26" aria-hidden="true">
+				<path d="M32 58 V37" stroke="#6f4522" stroke-width="6" stroke-linecap="round" fill="none" />
+				<circle cx="32" cy="20" r="12" fill="#1ba85e" />
+				<circle cx="18.5" cy="33" r="12" fill="#1ba85e" />
+				<circle cx="45.5" cy="33" r="12" fill="#1ba85e" />
+			</svg>
 			<span>Clann</span>
 		</a>
 
@@ -172,8 +177,7 @@
 		text-decoration: none;
 	}
 	.brand-mark {
-		color: var(--primary);
-		font-size: 1.3rem;
+		flex-shrink: 0;
 	}
 	.nav {
 		display: flex;
