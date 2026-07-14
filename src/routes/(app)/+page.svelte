@@ -3,6 +3,6 @@
 	let { data } = $props();
 </script>
 
-<svelte:head><title>Clann</title></svelte:head>
+<svelte:head><title>Clann - {data.treeName}</title></svelte:head>
 
 <FamilyTree tree={data.tree} isAdmin={data.isAdmin} />
